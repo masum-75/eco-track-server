@@ -21,7 +21,11 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-  
+  const db = client.db("ecoTrackDB");
+    const challengesCollection = db.collection("challenges");
+    const userChallengesCollection = db.collection("userChallenges");
+    const tipsCollection = db.collection("tips");
+    const eventsCollection = db.collection("events");
 
 
     // Send a ping to confirm a successful connection
