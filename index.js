@@ -112,6 +112,27 @@ async function run() {
       res.send(result);
     });
 
+     app.post("/tips", async (req, res) => {
+      const newTip = req.body;
+      newTip.createdAt = new Date();
+      const result = await tipsCollection.insertOne(newTip);
+      res.send(result);
+    });
+
+    app.get("/tips", async (req, res) => {
+      const result = await tipsCollection.find().sort({ createdAt: -1 }).limit(5).toArray();
+      res.send(result);
+    });
+
+    app.put("/tips/:id/upvote", async (req, res) => {
+      const id = req.params.id;
+      const result = await tipsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $inc: { upvotes: 1 } }
+      );
+      res.send(result);
+    });
+
 
 
    
