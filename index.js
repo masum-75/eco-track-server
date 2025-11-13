@@ -2,10 +2,35 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const app = express ();
+const admin = require("firebase-admin");
 const port = process.env.PORT || 3000;
+
+
+
+const serviceAccount = require("./eco-track-firebase-adminsdk.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 
 app.use(cors());
 app.use(express.json());
+
+const verifyToken = async (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ message: "unauthorized access. Token not found!" });
+  }
+
+  const token = authorization.split(" ")[1];
+  try {
+    await admin.auth().verifyIdToken(token);
+    next();
+  } catch (error) {
+    res.status(401).send({ message: "unauthorized access."});
+  }
+};
 
 const uri = "mongodb+srv://ecoTrackDBuser:xMdbVkiQQnHKC70l@cluster0.1rpvn4e.mongodb.net/?appName=Cluster0";
 
@@ -28,7 +53,7 @@ async function run() {
     const eventsCollection = db.collection("events");
 
 
-    app.post("/challenges", async(req,res) =>{
+    app.post("/challenges",verifyToken, async(req,res) =>{
         const newChallenge = req.body;
         const result = await challengesCollection.insertOne(newChallenge);
         res.send(result)
@@ -36,7 +61,7 @@ async function run() {
 
    
 
-    app.get("/challenges", async (req, res) => {
+    app.get("/challenges",verifyToken, async (req, res) => {
       const { category, search } = req.query;
       const filter = {};
 
@@ -52,12 +77,12 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/challenges/:id", async (req, res) => {
+    app.get("/challenges/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const result = await challengesCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
-    app.put("/challenges/:id", async (req, res) => {
+    app.put("/challenges/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const updatedData = req.body;
       updatedData.updatedAt = new Date();
@@ -68,13 +93,13 @@ async function run() {
       const result = await challengesCollection.updateOne(filter, update);
       res.send(result);
     });
-    app.delete("/challenges/:id", async (req, res) => {
+    app.delete("/challenges/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const result = await challengesCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
     });
 
-    app.post("/challenges/join/:id", async (req, res) => {
+    app.post("/challenges/join/:id",verifyToken, async (req, res) => {
       const challengeId = req.params.id;
       const { userId, userEmail } = req.body;
 
@@ -96,7 +121,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/my-challenges", async (req, res) => {
+    app.get("/my-challenges",verifyToken, async (req, res) => {
       const { email } = req.query;
       const result = await userChallengesCollection.find({ userEmail: email }).toArray();
       res.send(result);
@@ -133,7 +158,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/events", async (req, res) => {
+    app.post("/events",verifyToken, async (req, res) => {
       const newEvent = req.body;
       const result = await eventsCollection.insertOne(newEvent);
       res.send(result);
@@ -145,13 +170,13 @@ async function run() {
       res.send(result);
     });
 
-     app.get("/events/:id", async (req, res) => {
+     app.get("/events/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const result = await eventsCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
 
-   app.patch("/events/:id", async (req, res) => {
+   app.patch("/events/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const update = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -160,7 +185,7 @@ async function run() {
     });
 
     
-    app.delete("/events/:id", async (req, res) => {
+    app.delete("/events/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const result = await eventsCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
