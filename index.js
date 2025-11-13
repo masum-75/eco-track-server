@@ -133,7 +133,19 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/events", async (req, res) => {
+      const newEvent = req.body;
+      const result = await eventsCollection.insertOne(newEvent);
+      res.send(result);
+    });
 
+    
+    app.get("/events", async (req, res) => {
+      const result = await eventsCollection.find().sort({ date: 1 }).limit(4).toArray();
+      res.send(result);
+    });
+
+    
 
    
 
