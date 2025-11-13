@@ -145,7 +145,11 @@ async function run() {
       res.send(result);
     });
 
-    
+     app.get("/events/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await eventsCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
    
 
