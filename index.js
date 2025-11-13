@@ -151,7 +151,20 @@ async function run() {
       res.send(result);
     });
 
-   
+   app.patch("/events/:id", async (req, res) => {
+      const id = req.params.id;
+      const update = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const result = await eventsCollection.updateOne(filter, { $set: update });
+      res.send(result);
+    });
+
+    
+    app.delete("/events/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await eventsCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
     
    
