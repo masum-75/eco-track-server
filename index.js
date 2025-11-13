@@ -28,6 +28,62 @@ async function run() {
     const eventsCollection = db.collection("events");
 
 
+    app.post("/challenges", async(req,res) =>{
+        const newChallenge = req.body;
+        const result = await challengesCollection.insertOne(newChallenge);
+        res.send(result)
+    });
+
+   
+
+    app.get("/challenges", async (req, res) => {
+      const { category, search } = req.query;
+      const filter = {};
+
+      if (category) filter.category = category;
+      if (search) {
+        filter.$or = [
+          { title: { $regex: search, $options: "i" } },
+          { description: { $regex: search, $options: "i" } },
+        ];
+    }
+
+      const result = await challengesCollection.find(filter).sort({ createdAt: -1 }).toArray();
+      res.send(result);
+    });
+
+    app.get("/challenges/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await challengesCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+    app.put("/challenges/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedData = req.body;
+      updatedData.updatedAt = new Date();
+
+      const filter = { _id: new ObjectId(id) };
+      const update = { $set: updatedData };
+
+      const result = await challengesCollection.updateOne(filter, update);
+      res.send(result);
+    });
+    app.delete("/challenges/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await challengesCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+    
+
+   
+
+    
+   
+
+ 
+   
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
