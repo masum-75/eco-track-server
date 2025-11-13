@@ -1,6 +1,6 @@
 # EcoTrack Backend 
 
-Live Link : 
+Live Link : https://eco-track-server-dun.vercel.app/
 
 EcoTrack is a sustainability-focused community platform that encourages users to participate in eco-friendly challenges, share practical green tips, explore local environmental events, and track their personal progress.  
 This repository contains the backend server for EcoTrack, built using Node.js, Express.js, MongoDB, and Firebase Authentication.
