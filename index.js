@@ -1,13 +1,16 @@
 const express = require("express");
 const cors = require("cors");
+require('dotenv').config()
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const app = express ();
 const admin = require("firebase-admin");
+
 const port = process.env.PORT || 3000;
 
 
 
-const serviceAccount = require("./eco-track-firebase-adminsdk.json");
+const decoded = Buffer.from(process.env.FIREBASS_KEY, "base64").toString("utf8");
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -32,7 +35,7 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-const uri = "mongodb+srv://ecoTrackDBuser:xMdbVkiQQnHKC70l@cluster0.1rpvn4e.mongodb.net/?appName=Cluster0";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.1rpvn4e.mongodb.net/?appName=Cluster0`;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -212,7 +215,7 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally{
     //   await client.close();
