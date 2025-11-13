@@ -166,6 +166,19 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/home", async (req, res) => {
+      const challenges = await challengesCollection.find().sort({ createdAt: -1 }).limit(6).toArray();
+      const tips = await tipsCollection.find().sort({ createdAt: -1 }).limit(5).toArray();
+      const events = await eventsCollection.find().sort({ date: 1 }).limit(3).toArray();
+
+      const stats = {
+        totalChallenges: await challengesCollection.countDocuments(),
+        totalEvents: await eventsCollection.countDocuments(),
+        totalTips: await tipsCollection.countDocuments(),
+      };
+
+      res.send({ challenges, tips, events, stats });
+    });
     
    
 
