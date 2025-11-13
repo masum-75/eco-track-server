@@ -73,7 +73,46 @@ async function run() {
       const result = await challengesCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
     });
+
+    app.post("/challenges/join/:id", async (req, res) => {
+      const challengeId = req.params.id;
+      const { userId, userEmail } = req.body;
+
+      
+      await challengesCollection.updateOne(
+        { _id: new ObjectId(challengeId) },
+        { $inc: { participants: 1 } }
+      );
+
+      const newJoin = {
+        userId,
+        userEmail,
+        challengeId,
+        status: "Not Started",
+        progress: 0,
+        joinDate: new Date(),
+      };
+      const result = await userChallengesCollection.insertOne(newJoin);
+      res.send(result);
+    });
+
+    app.get("/my-challenges", async (req, res) => {
+      const { email } = req.query;
+      const result = await userChallengesCollection.find({ userEmail: email }).toArray();
+      res.send(result);
+    });
+
     
+    app.put("/my-challenges/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const update = { $set: data };
+      const result = await userChallengesCollection.updateOne(filter, update);
+      res.send(result);
+    });
+
+
 
    
 
