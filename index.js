@@ -50,13 +50,81 @@ async function run() {
     await client.connect();
 
   const db = client.db("ecoTrackDB");
+  const usersCollection = db.collection("users");
     const challengesCollection = db.collection("challenges");
     const userChallengesCollection = db.collection("userChallenges");
     const tipsCollection = db.collection("tips");
     const eventsCollection = db.collection("events");
 
+     app.post('/users', async (req, res) => {
+      const newUser = req.body;
+      const email = req.body.email;
+      const query = { email: email }
+      const existingUser = await usersCollection.findOne(query);
+      if (existingUser) {
+        res.send({ message: 'User already exist, Do not need to insert again.' });
+      }
+      else {
+        const result = await usersCollection.insertOne(newUser);
+        res.send(result);
 
-    app.post("/challenges",verifyToken, async(req,res) =>{
+      }
+    });
+
+    app.post('/joined-events', async (req, res) => {
+  try {
+    const { participantName, participantEmail, participantLocation, challengeId } = req.body;
+
+    if (!participantName || !participantEmail || !participantLocation || !challengeId) {
+      return res.status(400).send({ message: "All fields are required" });
+    }
+
+    
+    const existing = await joinedEventsCollection.findOne({ participantEmail, challengeId });
+    if (existing) {
+      return res.status(400).send({ message: "You have already joined this challenge!" });
+    }
+
+   
+    const result = await joinedEventsCollection.insertOne({
+      participantName,
+      participantEmail,
+      participantLocation,
+      challengeId,
+      joinedAt: new Date(),
+    });
+
+   
+    await challengesCollection.updateOne(
+      { _id: new ObjectId(challengeId) },
+      { $inc: { participants: 1 } }
+    );
+
+    res.status(201).send({
+      message: "Successfully joined the event",
+      result,
+    });
+  } catch (error) {
+    console.error("Error joining event:", error);
+    res.status(500).send({ message: "Server error", error });
+  }
+});
+
+
+
+app.get('/joined-events/:challengeId', async (req, res) => {
+  try {
+    const { challengeId } = req.params;
+    const participants = await joinedEventsCollection.find({ challengeId }).toArray();
+    res.send(participants);
+  } catch (error) {
+    console.error("Error fetching joined events:", error);
+    res.status(500).send({ message: "Server error", error });
+  }
+});
+
+
+    app.post("/challenges", async(req,res) =>{
         const newChallenge = req.body;
         const result = await challengesCollection.insertOne(newChallenge);
         res.send(result)
@@ -64,7 +132,7 @@ async function run() {
 
    
 
-    app.get("/challenges",verifyToken, async (req, res) => {
+    app.get("/challenges", async (req, res) => {
       const { category, search } = req.query;
       const filter = {};
 
@@ -96,7 +164,7 @@ async function run() {
       const result = await challengesCollection.updateOne(filter, update);
       res.send(result);
     });
-    app.delete("/challenges/:id",verifyToken, async (req, res) => {
+    app.delete("/challenges/:id", async (req, res) => {
       const id = req.params.id;
       const result = await challengesCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
