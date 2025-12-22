@@ -16,7 +16,15 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://ecotrack85.netlify.app",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 
