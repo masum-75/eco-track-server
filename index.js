@@ -41,6 +41,9 @@ async function run() {
     const userChallengesCollection = db.collection("userChallenges");
     const tipsCollection = db.collection("tips");
     const eventsCollection = db.collection("events");
+    const joinedEventsCollection = db.collection("joined-events");
+
+
 
     app.post("/users", async (req, res) => {
       const newUser = req.body;
