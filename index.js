@@ -41,7 +41,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+   
 
     const db = client.db("ecoTrackDB");
     const usersCollection = db.collection("users");
@@ -267,7 +267,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/events/:id", verifyToken, async (req, res) => {
+    app.patch("/events/:id",  async (req, res) => {
       const id = req.params.id;
       const update = req.body;
       const filter = { _id: new ObjectId(id) };
