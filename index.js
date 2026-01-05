@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const admin = require("firebase-admin");
 
@@ -18,16 +18,11 @@ admin.initializeApp({
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://ecotrack85.netlify.app",
-    ],
+    origin: ["http://localhost:5173", "https://ecotrack85.netlify.app"],
     credentials: true,
   })
 );
 app.use(express.json());
-
-
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.1rpvn4e.mongodb.net/?appName=Cluster0`;
 
@@ -41,7 +36,6 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-   
 
     const db = client.db("ecoTrackDB");
     const usersCollection = db.collection("users");
@@ -51,22 +45,76 @@ async function run() {
     const eventsCollection = db.collection("events");
     const joinedEventsCollection = db.collection("joined-events");
 
+    const verifyToken = (req, res, next) => {
+  if (!req.headers.authorization) {
+    return res.status(401).send({ message: 'Unauthorized access' });
+  }
+  const token = req.headers.authorization.split(' ')[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: 'Unauthorized access' });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
 
+
+const verifyAdmin = async (req, res, next) => {
+  const email = req.decoded.email;
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  const isAdmin = user?.role === 'admin';
+  if (!isAdmin) {
+    return res.status(403).send({ message: 'Forbidden access' });
+  }
+  next();
+};
 
     app.post("/users", async (req, res) => {
-      const newUser = req.body;
-      const email = req.body.email;
-      const query = { email: email };
+      const user = req.body;
+      const query = { email: user.email };
       const existingUser = await usersCollection.findOne(query);
-      if (existingUser) {
-        res.send({
-          message: "User already exist, Do not need to insert again.",
-        });
-      } else {
-        const result = await usersCollection.insertOne(newUser);
-        res.send(result);
-      }
+      if (existingUser) return res.send({ message: "User exists" });
+      const result = await usersCollection.insertOne({ ...user, role: "user" });
+      res.send(result);
     });
+
+    app.get("/users/role/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await usersCollection.findOne({ email });
+      res.send({ role: user?.role || "user" });
+    });
+
+    app.get("/all-users", verifyAdmin, async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.patch("/users/update-role/:id", verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const { role } = req.body;
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { role: role } }
+      );
+      res.send(result);
+    });
+
+    // app.post("/users", async (req, res) => {
+    //   const newUser = req.body;
+    //   const email = req.body.email;
+    //   const query = { email: email };
+    //   const existingUser = await usersCollection.findOne(query);
+    //   if (existingUser) {
+    //     res.send({
+    //       message: "User already exist, Do not need to insert again.",
+    //     });
+    //   } else {
+    //     const result = await usersCollection.insertOne(newUser);
+    //     res.send(result);
+    //   }
+    // });
 
     app.post("/joined-events", async (req, res) => {
       try {
@@ -132,9 +180,32 @@ async function run() {
       }
     });
 
-    app.post("/challenges", async (req, res) => {
-      const newChallenge = req.body;
-      const result = await challengesCollection.insertOne(newChallenge);
+    app.post("/challenges", verifyToken, async (req, res) => {
+      const item = req.body;
+      const result = await challengesCollection.insertOne(item);
+      res.send(result);
+    });
+
+    app.delete("/challenges/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await challengesCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.patch("/challenges/:id", verifyToken, async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          title: item.title,
+          category: item.category,
+          points: item.points,
+          description: item.description,
+        },
+      };
+      const result = await challengesCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
 
@@ -157,33 +228,15 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/challenges/:id",  async (req, res) => {
+    app.get("/challenges/:id", async (req, res) => {
       const id = req.params.id;
       const result = await challengesCollection.findOne({
         _id: new ObjectId(id),
       });
       res.send(result);
     });
-    app.put("/challenges/:id",  async (req, res) => {
-      const id = req.params.id;
-      const updatedData = req.body;
-      updatedData.updatedAt = new Date();
 
-      const filter = { _id: new ObjectId(id) };
-      const update = { $set: updatedData };
-
-      const result = await challengesCollection.updateOne(filter, update);
-      res.send(result);
-    });
-    app.delete("/challenges/:id", async (req, res) => {
-      const id = req.params.id;
-      const result = await challengesCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
-      res.send(result);
-    });
-
-    app.post("/challenges/join/:id",  async (req, res) => {
+    app.post("/challenges/join/:id", async (req, res) => {
       const challengeId = req.params.id;
       const { userId, userEmail } = req.body;
 
@@ -204,7 +257,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/my-challenges",  async (req, res) => {
+    app.get("/my-challenges", async (req, res) => {
       const { email } = req.query;
       const result = await userChallengesCollection
         .find({ userEmail: email })
@@ -246,7 +299,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/events",  async (req, res) => {
+    app.post("/events", async (req, res) => {
       const newEvent = req.body;
       const result = await eventsCollection.insertOne(newEvent);
       res.send(result);
@@ -261,13 +314,13 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/events/:id",  async (req, res) => {
+    app.get("/events/:id", async (req, res) => {
       const id = req.params.id;
       const result = await eventsCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
 
-    app.patch("/events/:id",  async (req, res) => {
+    app.patch("/events/:id", async (req, res) => {
       const id = req.params.id;
       const update = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -275,7 +328,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/events/:id",  async (req, res) => {
+    app.delete("/events/:id", async (req, res) => {
       const id = req.params.id;
       const result = await eventsCollection.deleteOne({
         _id: new ObjectId(id),
@@ -283,6 +336,68 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/admin-stats", verifyAdmin, async (req, res) => {
+      const totalUsers = await usersCollection.countDocuments();
+      const totalChallenges = await challengesCollection.countDocuments();
+      const completedMissions = await userChallengesCollection.countDocuments({
+        status: "Completed",
+      });
+      res.send({ totalUsers, totalChallenges, completedMissions });
+    });
+
+    app.get("/users/role/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await usersCollection.findOne({ email });
+      res.send({ role: user?.role || "user" });
+    });
+
+    // 2. Get All Users (Admin Only)
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    // 3. Update User Role (Admin only)
+  
+
+    app.patch("/users/role/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const { role } = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = { $set: { role: role } };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    
+    app.get("/users/admin/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === "admin";
+      }
+      res.send({ admin });
+    });
+
+    app.post('/complete-challenge', async (req, res) => {
+    const { userEmail, challengeId, pointsToAdd } = req.body;
+    
+    // 1. Mark challenge as completed for user
+    await activityCollection.insertOne({ userEmail, challengeId, date: new Date(), status: 'completed' });
+    
+    
+    await usersCollection.updateOne(
+        { email: userEmail },
+        { $inc: { totalPoints: pointsToAdd } }
+    );
+    
+    res.send({ success: true });
+});
     app.get("/home", async (req, res) => {
       const challenges = await challengesCollection
         .find()
